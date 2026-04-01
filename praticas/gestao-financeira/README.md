@@ -95,3 +95,148 @@ O grande charme dessa interface é o botão central flutuante. Em vez de um íco
 Seu aplicativo agora foi devidamente inicializado, possui três telas roteadas, um cabeçalho verde alinhado e uma barra inferior personalizada com um botão de ação centralizado e esteticamente agradável.
 
 **Próximo Passo:** No próximo commit, daremos vida à tela do meio, construindo o **Formulário de Adicionar Transação!**
+
+## 💻 Código Fonte da Aula
+Abaixo estão os códigos desenvolvidos durante esta aula, organizados por arquivo.
+
+**constants/colors.js**
+
+```js
+export const colors = {
+  primary: "#37BF81",
+  primaryContrast: "#FFFFFF",
+  inactive: "#B1B1B1",
+  background: "#F5F5F5",
+  categoryIncome: "#DE9AC3",
+  categoryFood: "#DEA17B",
+  categoryHouse: "#E6E088",
+  categoryEducation: "#AB8FBE",
+  categoryTravel: "#82C9DE",
+  primaryText: "#666666",
+  secondaryText: "#B1B1B1",
+  positiveText: "#37BF81",
+  negativesText: "#DA5567"
+}
+```
+**app/_layout.jsx**
+```js
+import { Stack } from "expo-router"
+import { StatusBar } from "expo-status-bar"
+import { colors } from "../constants/colors"
+
+export default function RootLayout() {
+  return (
+    <>
+      <StatusBar backgroundColor={colors.primary} style="light"/>
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="+not-found" />
+      </Stack>
+    </>
+  )
+}
+```
+**app/(tabs)/_layout.jsx**
+```js
+import { Tabs } from "expo-router"
+import { colors } from "../../constants/colors"
+import { MaterialIcons } from "@expo/vector-icons"
+import { StyleSheet, TouchableOpacity, View } from "react-native"
+
+export default function TabsLayout() {
+  return (
+    <Tabs
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.primary },
+        headerTintColor: colors.primaryContrast,
+        headerTitleAlign: "center",
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.inactive,
+        tabBarStyle: {
+            height: 60,
+            paddingTop: 5,
+            backgroundColor: colors.background
+        },
+        tabBarButton: (props) => <TouchableOpacity {...props} activeOpacity={0.8}/>
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: "Transações",
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="attach-money" size={28} color={color} />
+          )
+        }}
+      />
+      <Tabs.Screen
+        name="add-transactions"
+        options={{
+          title: "Adicionar Transação",
+          tabBarLabel: "",
+          tabBarIcon: () => (
+            <View style={styles.addButton}>
+              <MaterialIcons name="add" size={40} color={colors.primaryContrast} />
+            </View>
+          )
+        }}
+      />
+      <Tabs.Screen
+        name="summary"
+        options={{
+          title: "Resumo",
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="pie-chart" size={28} color={color} />
+          )
+        }}
+      />
+    </Tabs>
+  )
+}
+
+const styles = StyleSheet.create({
+  addButton: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 64,
+    width: 64,
+    borderRadius: 32,
+    backgroundColor: colors.primary
+  }
+})
+
+```
+**app/(tabs)/index.jsx**
+```js
+import { Text } from "react-native"
+
+export default function Transactions() {
+  return <Text>Transações</Text>
+}
+```
+**app/(tabs)/add-transactions.jsx**
+```js
+import { Text } from "react-native"
+
+export default function AddTransactions() {
+  return <Text>Adicionar Transações</Text>
+}
+```
+**app/(tabs)/summary.jsx**
+```js
+import { Text } from "react-native"
+
+export default function Summary() {
+  return <Text>Resumo</Text>
+}
+```
+**app/+not-found.jsx**
+```jsx
+import { Text } from "react-native"
+
+export default function NotFoundScreen() {
+  return <Text>Not found</Text>
+}
+```
+
