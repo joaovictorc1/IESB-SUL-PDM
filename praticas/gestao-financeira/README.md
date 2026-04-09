@@ -1,49 +1,83 @@
-# 💻 Aula 08: Gerando o Aplicativo Final (Build com EAS) e Distribuição
+# Aula 08: aplicativo instalável com EAS (Expo)
 
-Até o momento, nosso aplicativo só funciona se o nosso computador estiver ligado, com o terminal rodando e conectados pelo Expo Go. Mas como fazemos para gerar o arquivo final do aplicativo e enviar para outras pessoas instalarem? 
-
-Nesta aula, vamos usar o **EAS (Expo Application Services)** para compilar nosso código nas nuvens e gerar um arquivo instalável (`.apk`) para Android!
-
-## 🎯 Objetivos da Aula
-* Entender a diferença entre *Development Build*, *Internal Distribution* e *Production Build*.
-* Criar uma conta gratuita no portal da Expo.
-* Instalar e configurar o `eas-cli` no projeto.
-* Configurar o arquivo `eas.json` para gerar um arquivo APK.
-* Realizar o build do aplicativo na nuvem.
-* Baixar, instalar e testar o app nativo no próprio smartphone.
+Com **Expo Go** o app depende do computador e do comando `npx expo start`. Com **EAS Build**, a Expo compila o projeto na nuvem e você baixa um **APK** (Android) para instalar no celular como um app “de verdade”, sem cabo e sem servidor local rodando.
 
 ---
 
-## ☁️ Passo 1: Preparando o Terreno (Conta e CLI)
-Para que a Expo compile o aplicativo nos servidores deles (o que é ótimo, pois não exige um computador potente ou um Mac da nossa parte), precisamos de uma conta e da ferramenta de linha de comando.
+## O que você vai conseguir ao final
 
-1. **Crie sua conta:** Acesse [expo.dev](https://expo.dev) e crie uma conta gratuita.
-2. **Instale o EAS CLI:** No seu terminal (pode ser fora da pasta do projeto), instale a ferramenta globalmente:
-   ```bash
-   npm install -g eas-cli
-   ```
-3. **Faça o Login:** No terminal, digite o comando abaixo e insira o e-mail e senha da conta que você acabou de criar:
+1. Projeto ligado à sua conta Expo (`eas init`).
+2. Perfil de build **preview** gerando **APK** (instalável direto no Android).
+3. Um build na nuvem (`eas build`) e o arquivo no aparelho para testar.
+
+---
+
+## Antes de começar (pré-requisitos)
+
+| Item | Detalhe |
+|------|---------|
+| **Node.js** | Instalado (LTS recomendado). Confira com `node -v` no terminal. |
+| **Conta Expo** | Gratuita em [expo.dev](https://expo.dev). |
+| **Celular Android** | Para instalar o APK (iOS usa fluxo diferente / conta Apple). |
+| **Pasta certa** | Todos os comandos `eas` desta aula são na pasta do app: `praticas/gestao-financeira` (é ali que estão `app.json`, `package.json` e `eas.json`). |
+
+---
+
+## Roteiro rápido (checklist)
+
+- [ ] **1.** Criar conta em [expo.dev](https://expo.dev)  
+- [ ] **2.** Instalar a CLI: `npm install -g eas-cli`  
+- [ ] **3.** Entrar na pasta do projeto e fazer login: `eas login`  
+- [ ] **4.** Associar o projeto: `eas init` (cria/atualiza `eas.json` e o `projectId` no `app.json`)  
+- [ ] **5.** Conferir `eas.json` (perfil `preview` com APK — ver abaixo)  
+- [ ] **6.** Disparar o build: `eas build -p android --profile preview`  
+- [ ] **7.** Abrir o link (ou QR Code) no celular, baixar o `.apk` e instalar  
+
+---
+
+## Passo a passo
+
+### 1. Instalar o EAS CLI e entrar na conta
+
+Em qualquer pasta do terminal:
+
 ```bash
+npm install -g eas-cli
 eas login
 ```
-## ⚙️ Passo 2: Inicializando o EAS no Projeto
-Agora, navegue até a pasta do seu projeto (`gestao-financeira` ou `Money`) no terminal e digite:
+
+Use o e-mail e a senha da conta [expo.dev](https://expo.dev).
+
+### 2. Ir para a pasta do aplicativo
+
+Exemplo (ajuste o caminho se o seu projeto estiver em outro lugar):
+
+```bash
+cd praticas/gestao-financeira
+```
+
+### 3. Ligar o projeto ao EAS (`eas init`)
+
+Ainda nessa pasta:
+
 ```bash
 eas init
 ```
-O terminal vai perguntar qual é o ID do projeto ou se deseja vinculá-lo à sua conta da Expo. Confirme as opções. Esse comando criará um arquivo muito importante na raiz do seu projeto chamado `eas.json`.
 
-## 📝 Passo 3: Configurando o `eas.json` para gerar um APK
-Por padrão, se mandarmos a Expo fazer um build de produção para Android, ela vai gerar um arquivo `.aab` (Android App Bundle), que é o formato exigido pela Google Play Store, mas que **não pode ser instalado diretamente no celular**.
+- Aceite vincular o app ao seu usuário/equipe Expo quando o assistente perguntar.  
+- Isso preenche o **`extra.eas.projectId`** no `app.json`. Se ainda aparecer um texto tipo “AQUI VAI O ID DO PROJETO”, rode de novo `eas init` ou copie o ID do painel do projeto em [expo.dev](https://expo.dev).
 
-Como queremos um arquivo para "Distribuição Interna" (para instalar via download/QR Code), precisamos dizer para a Expo gerar um `.apk`.
+### 4. Configurar o `eas.json` para gerar APK
 
-Abra o arquivo `eas.json` e adicione o perfil `preview` dentro da seção `build`, especificando o `buildType`:
+Build de **produção** para Play Store costuma gerar **`.aab`**, que o usuário comum **não instala tocando no arquivo**. Para testar no próprio celular, o perfil **preview** deve pedir **`apk`**.
+
+No arquivo **`eas.json`** (na raiz de `gestao-financeira`), o perfil `preview` deve incluir `android.buildType`:
 
 ```json
 {
   "cli": {
-    "version": ">= 3.0.0"
+    "version": ">= 15.0.14",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -51,47 +85,66 @@ Abra o arquivo `eas.json` e adicione o perfil `preview` dentro da seção `build
       "distribution": "internal"
     },
     "preview": {
+      "distribution": "internal",
       "android": {
         "buildType": "apk"
       }
     },
-    "production": {}
+    "production": {
+      "autoIncrement": true
+    }
   },
   "submit": {
     "production": {}
   }
 }
 ```
-## 🚀 Passo 4: Rodando o Build na Nuvem
-Chegou o grande momento! Com tudo configurado, vamos mandar o nosso código para os servidores da Expo compilarem o nosso APK.
 
-No terminal, execute o comando usando o perfil (`profile`) que acabamos de configurar:
+> **Resumo para leigo:** `preview` + `apk` = arquivo que você baixa e instala no Android sem publicar na loja.
+
+### 5. Rodar o build na nuvem
+
+Na pasta `gestao-financeira`:
+
 ```bash
 eas build -p android --profile preview
 ```
 
-**O que vai acontecer agora?**
+O que pode aparecer:
 
-1. O EAS vai perguntar se você deseja gerar uma nova Android Keystore (uma chave de segurança criptografada do seu app). Digite Y (Yes).
-2. Ele vai compactar seu projeto e enviar para a fila de compilação na nuvem.
-3. **Pausa para o café:** Como estamos usando o plano gratuito da Expo, o build entra em uma fila. Esse processo pode levar de **10 a 25 minutos**. Você pode acompanhar o progresso pelo link do painel que aparecerá no seu terminal.
+- Pergunta sobre **keystore** (chave de assinatura): na primeira vez, confirme para a Expo **gerar e guardar** a keystore (recomendado para quem está aprendendo).  
+- O projeto sobe para os servidores da Expo; no **plano gratuito** há **fila** — costuma levar **cerca de 10–25 minutos** (varia).  
+- No terminal surgirá um **link** para acompanhar o build e, ao terminar, para **baixar** o APK.
 
-## 📱 Passo 5: Instalando no Celular
-Quando o build terminar (mensagem de *Build Finished*), o seu terminal exibirá um **QR Code** gigante e um link.
+### 6. Instalar no Android
 
-1. Abra a câmera do seu celular Android e escaneie o QR Code (ou abra o link no navegador do celular).
-2. Ele fará o download de um arquivo final `.apk`.
-3. Toque para instalar.
+1. Abra o link no **celular** (ou use o QR Code no terminal).  
+2. Baixe o arquivo **`.apk`**.  
+3. Toque para instalar.  
+4. Se o sistema bloquear: **Configurações → segurança / apps → permitir instalação desta fonte** (o nome muda conforme a marca do aparelho).  
+5. Abra o ícone do app e teste **sem** precisar do `expo start` no PC.
 
-- *Atenção*: O Android bloqueará a instalação inicialmente por segurança. Você precisará ir em Configurações e permitir a **"Instalação de aplicativos de fontes desconhecidas"**.
-4. Abra o aplicativo!
+---
 
-### 📚 Entendendo os Tipos de Build (Teoria)
-- **Development Build:** Um "Expo Go personalizado". Você instala no celular, mas ainda precisa do terminal rodando (`npx expo start`) para ele funcionar. Usado para testar bibliotecas nativas complexas.
-- **Internal Distribution (Preview):** O que fizemos agora! Gera um `.apk` que funciona 100% offline, sem depender do seu computador. Perfeito para portfólio, testes da equipe e enviar para os amigos.
-- **Production Build:** O build final. Para subir esse build na Apple App Store ou na Google Play Store, você precisará pagar as taxas de desenvolvedor (US$ 99/ano para Apple e taxa única de US$ 25 para o Google). O EAS também tem ferramentas automáticas (`eas submit`) para enviar direto para as lojas quando você tiver essas contas!
+## Tipos de build (ideia geral)
 
-### ✅ Conclusão do Módulo
-Parabéns! 🎉 Você concluiu a jornada de desenvolvimento mobile! Criamos um projeto do zero, estruturamos telas, estilizamos, manipulamos estados globais, salvamos dados na memória do aparelho e, finalmente, geramos um aplicativo instalável de verdade.
+| Tipo | Uso principal |
+|------|----------------|
+| **Development** | Cliente de desenvolvimento (tipo “Expo Go customizado”); ainda costuma precisar do fluxo de dev no computador para muitos testes. |
+| **Preview (APK interno)** | Distribuir para você, amigos ou banca: app **fechado**, roda **offline** em relação ao seu PC. |
+| **Production** | Versão para **Play Store / App Store**; Android em geral vira **`.aab`**. Lojas têm taxas e requisitos extras (conta de desenvolvedor Google/Apple). |
 
-Agora você tem uma base sólida para criar seus próprios aplicativos usando React Native e Expo!
+---
+
+## Problemas comuns
+
+- **“Não estou na pasta certa”** — `eas build` precisa ser executado onde existe `eas.json` e `app.json` (`gestao-financeira`).  
+- **Build falhou por configuração** — rode `npx expo-doctor` na mesma pasta e siga as sugestões (pacote Android `applicationId`, ícones, etc., se o doctor apontar).  
+- **Muito tempo na fila** — normal no plano gratuito; use o link do dashboard para ver status.  
+- **iPhone** — instalar build de terceiros exige fluxo com **TestFlight** ou **development build** com cadastro de dispositivo; esta aula foca no **APK Android** por ser o caminho mais simples para “baixar e instalar”.
+
+---
+
+## Conclusão do módulo
+
+Você passou do protótipo no Expo Go a um **pacote instalável** gerado com **EAS**, alinhado ao fluxo profissional de apps React Native/Expo. Para evoluir: filtros, gráficos, publicação nas lojas com `eas submit` quando tiver conta de desenvolvedor.
