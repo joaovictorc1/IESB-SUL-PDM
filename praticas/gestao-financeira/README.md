@@ -43,7 +43,7 @@ Quando criamos um projeto, ele vem com vários arquivos de exemplo. Vamos fazer 
 Dentro da pasta `app/(tabs)`, vamos garantir que temos os 3 arquivos principais que representarão nossas abas:
 
 - `index.jsx` (Tela inicial - Lista de transações)
-- `AddTransactions.jsx` (Tela de formulário)
+- `add-transactions.jsx` (Tela de formulário)
 - `summary.jsx` (Tela de resumo)
 
 *Exemplo da estrutura básica de cada tela:*
