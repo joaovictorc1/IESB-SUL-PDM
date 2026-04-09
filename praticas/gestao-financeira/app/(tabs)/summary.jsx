@@ -6,9 +6,24 @@ import SummaryItem from "../../components/SummaryItem";
 import { StyleSheet, Text, View } from "react-native";
 import { colors } from "../../constants/colors";
 
+/** Chaves de categoria válidas para acumular totais (exclui chaves auxiliares como `sum`). */
+const SUMMARY_CATEGORY_KEYS = [
+  categories.income.name,
+  categories.food.name,
+  categories.house.name,
+  categories.education.name,
+  categories.travel.name,
+];
+
 export default function Summary() {
   const [transactions] = useContext(MoneyContext);
 
+  /**
+   * Calcula totais por categoria e saldo geral em uma única passada O(n) sobre `transactions`.
+   * Ignora itens cuja `category` não está em `SUMMARY_CATEGORY_KEYS` (dados legados/inválidos).
+   *
+   * @returns {{ sum: number, income: number, food: number, house: number, education: number, travel: number }}
+   */
   const getTotals = () => {
     const totals = {
       sum: 0,
@@ -21,6 +36,9 @@ export default function Summary() {
 
     for (let i = 0; i < transactions.length; i++) {
       const item = transactions[i];
+      if (!SUMMARY_CATEGORY_KEYS.includes(item.category)) {
+        continue;
+      }
 
       totals[item.category] += item.value;
 

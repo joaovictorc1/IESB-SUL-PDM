@@ -1,30 +1,95 @@
 # 💻 Aula 07: Tela de Resumo, Lógica de Totais e Otimização com `useMemo`
 
-Chegamos à última tela do nosso aplicativo! A aba de "Resumo" será responsável por pegar todas as transações cadastradas, separá-las por categorias, somar os valores e exibir o saldo final (positivo ou negativo). Faremos isso com foco em **performance**, garantindo que o celular não trave mesmo se houver milhares de transações.
+Na aba **Resumo**, o app agrega todas as transações: total por categoria e saldo final (positivo ou negativo). O foco é **performance**: um único loop O(n) e `useMemo` para não recalcular a cada render sem necessidade.
 
 ## 🎯 Objetivos da Aula
-* Criar o componente `SummaryItem` para exibir o total de cada categoria.
-* Desenvolver um algoritmo otimizado (O(n)) para somar valores sem repetir loops.
-* Utilizar o Hook `useMemo` para evitar recálculos desnecessários e melhorar a performance.
-* Exibir o saldo final com cores condicionais (verde para positivo, vermelho para negativo).
-* Desafio final: Dicas de como evoluir o app para o seu portfólio!
+
+- Criar o componente `SummaryItem` para exibir o total de cada categoria.
+- Implementar um algoritmo em uma passada sobre o array de transações (HashMap / acumuladores).
+- Usar o hook `useMemo` para memoizar o resultado enquanto `transactions` não mudar.
+- Exibir o saldo final com cores condicionais (verde / vermelho).
+- Manter `CategoryItem` e o fluxo de totais **à prova de categorias inválidas** (AsyncStorage legado).
 
 ---
 
-## 🧩 Passo 1: O Componente `SummaryItem`
-Este componente é muito parecido com o item da lista de transações, mas é mais enxuto: ele não mostra a data e exibe apenas a categoria e o valor total acumulado.
+## 🔧 Revisão: `CategoryItem` (evitar crash na lista e no resumo)
+
+A tela de resumo reutiliza `CategoryItem`. Se alguma transação antiga tiver `category` que não existe em `constants/categories.js`, acessar `categories[category].background` gera **`Cannot read property 'background' of undefined`**.
+
+Garanta que `components/CategoryItem.jsx` use **fallback** e `StyleSheet.create` **estático** (sem recriar estilos a cada render):
+
+```jsx
+import { MaterialIcons } from "@expo/vector-icons";
+import { StyleSheet, View } from "react-native";
+import { categories } from "../constants/categories";
+import { colors } from "../constants/colors";
+
+/**
+ * Exibe o ícone da categoria em um círculo com a cor de fundo correspondente.
+ *
+ * @param {Object} props - Propriedades do componente.
+ * @param {string} props.category - Chave da categoria em `categories` (ex.: "food", "income").
+ *   Se o valor não existir em `categories` (dados legados ou inválidos no AsyncStorage), usa
+ *   `categories.food` como padrão para evitar crash ao acessar propriedades de `undefined`.
+ * @returns {JSX.Element} View com ícone Material centrado.
+ */
+export default function CategoryItem({ category }) {
+  const categoryConfig = categories[category] ?? categories.food;
+
+  return (
+    <View
+      style={[styles.background, { backgroundColor: categoryConfig.background }]}
+    >
+      <MaterialIcons
+        name={categoryConfig.icon}
+        size={24}
+        color={colors.primaryContrast}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  background: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+});
+```
+
+---
+
+## 🧩 Passo 1: O componente `SummaryItem`
+
+Componente enxuto: ícone da categoria, nome para exibição e valor total. O rótulo usa o mesmo fallback do `CategoryItem` (`categoryConfig`) para não quebrar com chaves desconhecidas.
 
 Crie o arquivo `components/SummaryItem.jsx`:
 
-```javascript
+```jsx
 import { StyleSheet, Text, View } from "react-native";
+
 import CategoryItem from "./CategoryItem";
 import { categories } from "../constants/categories";
 import { globalStyles } from "../styles/globalStyles";
 
+/**
+ * Linha de resumo: ícone da categoria, nome para exibição e valor total formatado.
+ *
+ * @param {Object} props - Propriedades do componente.
+ * @param {string} props.category - Chave em `categories` (ex.: "food"). Valores desconhecidos
+ *   usam o fallback de `categories.food` para o rótulo, alinhado ao `CategoryItem`.
+ * @param {number} props.value - Total monetário da categoria (já agregado na tela de resumo).
+ * @returns {JSX.Element} Container com ícone e textos.
+ */
 export default function SummaryItem({ category, value }) {
-  // Define se o texto do valor será verde (renda) ou vermelho (gasto)
-  const valueStyle = category === categories.income.name
+  const categoryConfig = categories[category] ?? categories.food;
+
+  const valueStyle =
+    category === categories.income.name
       ? globalStyles.positiveText
       : globalStyles.negativeText;
 
@@ -33,7 +98,7 @@ export default function SummaryItem({ category, value }) {
       <CategoryItem category={category} />
       <View style={styles.textContainer}>
         <Text style={globalStyles.primaryText}>
-          {categories[category].displayName}
+          {categoryConfig.displayName}
         </Text>
         <Text style={valueStyle}>
           {value.toLocaleString("pt-BR", {
@@ -62,13 +127,16 @@ const styles = StyleSheet.create({
   },
 });
 ```
-## 🧠 Passo 2: A Tela de Resumo e a Lógica Otimizada
-Para somar os valores, poderíamos usar a função `reduce` várias vezes (uma para cada categoria). Porém, passar pelo array inteiro 5 vezes é ruim para a performance.
 
-Em vez disso, vamos usar a técnica de **HashMap**: criamos um objeto com os totais zerados e passamos pelo array de transações **apenas uma vez** (`for`), distribuindo os valores nas "caixinhas" corretas.
+---
+
+## 🧠 Passo 2: A tela de resumo e a lógica otimizada
+
+Somar com vários `reduce` (um por categoria) repete trabalho. Aqui usamos **um único `for`**: acumulamos em um objeto `totals`. Transações com `category` fora da lista conhecida são **ignoradas**, evitando `NaN` e totais inconsistentes.
 
 Abra o arquivo `app/(tabs)/summary.jsx`:
-```js
+
+```jsx
 import { useContext, useMemo } from "react";
 import { MoneyContext } from "../../contexts/GlobalState";
 import { categories } from "../../constants/categories";
@@ -77,10 +145,24 @@ import SummaryItem from "../../components/SummaryItem";
 import { StyleSheet, Text, View } from "react-native";
 import { colors } from "../../constants/colors";
 
+/** Chaves de categoria válidas para acumular totais (exclui chaves auxiliares como `sum`). */
+const SUMMARY_CATEGORY_KEYS = [
+  categories.income.name,
+  categories.food.name,
+  categories.house.name,
+  categories.education.name,
+  categories.travel.name,
+];
+
 export default function Summary() {
   const [transactions] = useContext(MoneyContext);
 
-  // Função que calcula todos os totais passando pela lista UMA única vez
+  /**
+   * Calcula totais por categoria e saldo geral em uma única passada O(n) sobre `transactions`.
+   * Ignora itens cuja `category` não está em `SUMMARY_CATEGORY_KEYS` (dados legados/inválidos).
+   *
+   * @returns {{ sum: number, income: number, food: number, house: number, education: number, travel: number }}
+   */
   const getTotals = () => {
     const totals = {
       sum: 0,
@@ -93,11 +175,12 @@ export default function Summary() {
 
     for (let i = 0; i < transactions.length; i++) {
       const item = transactions[i];
+      if (!SUMMARY_CATEGORY_KEYS.includes(item.category)) {
+        continue;
+      }
 
-      // Soma o valor na categoria específica
       totals[item.category] += item.value;
 
-      // Atualiza o Saldo Geral (soma se for renda, subtrai se for gasto)
       if (item.category === categories.income.name) {
         totals.sum += item.value;
       } else {
@@ -107,29 +190,38 @@ export default function Summary() {
     return totals;
   };
 
-  /* * A MÁGICA DA PERFORMANCE (useMemo):
-   * O React só vai executar a função getTotals de novo se o array [transactions] mudar!
-   * Isso evita cálculos pesados em renderizações desnecessárias da tela.
-   */
+  /* useMemo: recalcula só quando [transactions] mudar. */
   const totals = useMemo(getTotals, [transactions]);
 
-  // Define a cor do Saldo Final
-  const valueStyle = totals.sum > 0 ? globalStyles.positiveText : globalStyles.negativeText;
+  const valueStyle =
+    totals.sum > 0 ? globalStyles.positiveText : globalStyles.negativeText;
 
   return (
     <View style={globalStyles.screenContainer}>
       <View style={globalStyles.content}>
-        
-        {/* Renderiza os Itens de Resumo */}
-        <SummaryItem category={categories.income.name} value={totals[categories.income.name]} />
-        <SummaryItem category={categories.food.name} value={totals[categories.food.name]} />
-        <SummaryItem category={categories.house.name} value={totals[categories.house.name]} />
-        <SummaryItem category={categories.education.name} value={totals[categories.education.name]} />
-        <SummaryItem category={categories.travel.name} value={totals[categories.travel.name]} />
-        
+        <SummaryItem
+          category={categories.income.name}
+          value={totals[categories.income.name]}
+        />
+        <SummaryItem
+          category={categories.food.name}
+          value={totals[categories.food.name]}
+        />
+        <SummaryItem
+          category={categories.house.name}
+          value={totals[categories.house.name]}
+        />
+        <SummaryItem
+          category={categories.education.name}
+          value={totals[categories.education.name]}
+        />
+        <SummaryItem
+          category={categories.travel.name}
+          value={totals[categories.travel.name]}
+        />
+
         <View style={globalStyles.line} />
-        
-        {/* Renderiza o Saldo Final */}
+
         <View style={styles.balance}>
           <Text style={styles.balanceText}>Saldo</Text>
           <Text style={valueStyle}>
@@ -139,7 +231,6 @@ export default function Summary() {
             })}
           </Text>
         </View>
-        
       </View>
     </View>
   );
@@ -150,24 +241,36 @@ const styles = StyleSheet.create({
     display: "flex",
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 10,
   },
   balanceText: {
     fontSize: 18,
     color: colors.primaryText,
-    fontWeight: "800",
+    fontWeight: 800,
   },
 });
 ```
-## 🚀 Desafio Final: Destaque-se no seu Portfólio!
-Aplicativos clonados exatamente iguais aos de cursos não chamam tanta atenção de recrutadores. Agora que você tem a base sólida e o aplicativo rodando perfeitamente, **coloque a sua cara nele!** Aqui estão algumas sugestões de como evoluir esse app para o seu portfólio do GitHub:
 
-1. **Filtro de Mês/Ano:** Na tela inicial e de resumo, adicione um botão para filtrar as transações apenas do mês atual.
-2. **Gráficos Visuais:** Na tela de Resumo, substitua (ou complemente) os textos por um gráfico de pizza (PieChart), mostrando a porcentagem de gastos por categoria.
-3. **Edição e Exclusão:** Permita que o usuário clique e segure (onLongPress) em uma transação na lista para abrir um modal de exclusão ou edição.
-4. **Categorias Customizadas:** Permita que o usuário crie novas categorias além das 5 originais.
+**Nota sobre imports:** em `app/(tabs)/index.jsx` o projeto usa o alias `@/contexts/GlobalState`. Em `summary.jsx` desta branch o import relativo `../../contexts/GlobalState` é o que está no repositório; ambos funcionam se o alias estiver configurado no Babel/Expo.
 
-✅ **O que alcançamos hoje?**
-Fechamos o ciclo! O App "Money" agora é um aplicativo financeiro completo, com controle de formulários avançado, navegação em abas, salvamento persistente, listagens dinâmicas e cálculos otimizados com `useMemo`.
+---
 
-**Próximo Passo:** Na nossa última aula bônus, conversaremos sobre como preparar esse aplicativo para publicação e gerar um `.apk` para instalarmos de verdade no celular!
+## 💡 Debug (AsyncStorage)
+
+Se ainda houver dados corrompidos, você pode limpar o storage uma vez com `AsyncStorage.clear()` temporário em `contexts/GlobalState.jsx` (rodar o app e remover depois). Com `CategoryItem`, `SummaryItem` e o filtro em `getTotals`, categorias inválidas deixam de derrubar a UI e não poluem o saldo com `NaN`.
+
+---
+
+## 🚀 Desafio final: portfólio
+
+1. **Filtro de mês/ano** nas telas de lista e resumo.
+2. **Gráficos** (ex.: pizza) na aba de resumo.
+3. **Edição e exclusão** de transações (toque longo, modal).
+4. **Categorias customizadas** além das cinco fixas.
+
+---
+
+## ✅ O que alcançamos
+
+App com lista, persistência, resumo por categoria, saldo final, `useMemo` e camadas defensivas para dados legados.
+
+**Próximo passo (bônus):** preparar build / `.apk` para instalação no dispositivo.
