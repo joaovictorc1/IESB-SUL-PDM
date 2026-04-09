@@ -1,77 +1,104 @@
 # 💻 Aula 06: Listagem de Transações (FlatList e Estilização Dinâmica)
 
-Até agora, nosso aplicativo salva as transações na memória de forma invisível. Nesta aula, vamos dar vida à aba principal do aplicativo, criando uma lista elegante para exibir todas as movimentações financeiras. Aprenderemos a formatar dados na tela, criar estilos condicionais (renda verde, gastos vermelhos) e lidar com listas vazias.
+Até agora, o aplicativo salva as transações de forma persistente (AsyncStorage). Nesta aula, damos vida à aba principal: uma lista para exibir as movimentações. Veremos como formatar dados na tela, estilos condicionais (renda em verde, gastos em vermelho) e o uso de `ListEmptyComponent` na `FlatList`.
 
 ## 🎯 Objetivos da Aula
-* Utilizar o componente `<FlatList>` para renderizar listas otimizadas.
-* Criar um componente isolado para o item da lista (`TransactionItem`).
-* Criar um componente dinâmico de ícones (`CategoryItem`) baseado na categoria.
-* Aplicar estilização condicional (cores diferentes dependendo do tipo de transação).
-* Formatar datas e valores monetários para o padrão brasileiro (`pt-BR`).
-* Usar a propriedade `ListEmptyComponent` da FlatList.
+
+- Utilizar o componente `<FlatList>` para renderizar listas otimizadas.
+- Criar um componente isolado para o item da lista (`TransactionItem`).
+- Criar um componente de ícone por categoria (`CategoryItem`), com estilo dinâmico e proteção contra categorias inválidas.
+- Aplicar estilização condicional (cores diferentes conforme o tipo de transação).
+- Formatar datas e valores monetários para o padrão brasileiro (`pt-BR`).
+- Usar a propriedade `ListEmptyComponent` da `FlatList`.
 
 ---
 
 ## 🎨 Passo 1: Atualizando os Estilos Globais
-Antes de construir os componentes, precisamos de novas cores e padrões de texto no nosso arquivo `styles/globalStyles.js`. Adicione as classes de linhas e textos primários/secundários:
+
+Antes dos componentes, inclua no `StyleSheet.create` de `styles/globalStyles.js` as classes de linha e de textos primário, secundário, positivo e negativo (o vermelho usa a chave `negativesText` em `constants/colors.js`):
 
 ```javascript
-// Adicione isto ao seu StyleSheet.create no globalStyles.js
-  line: {
-    backgroundColor: colors.secondaryText,
-    height: 1,
-    opacity: 0.5,
-    marginBottom: 4
-  },
-  primaryText: {
-    fontSize: 16,
-    color: colors.primaryText
-  },
-  secondaryText: {
-    fontSize: 12,
-    color: colors.secondaryText
-  },
-  positiveText: {
-    fontSize: 16,
-    color: colors.positiveText // Verde
-  },
-  negativeText: {
-    fontSize: 16,
-    color: colors.negativesText // Vermelho
-  },
-  ```
- ## 🔣 Passo 2: O Ícone Dinâmico (CategoryItem)
-Cada transação terá um ícone redondo do lado esquerdo. A cor e o desenho do ícone mudam dependendo da categoria (Alimentação, Casa, etc.).
+// Trecho a adicionar ao StyleSheet.create em globalStyles.js
+line: {
+  backgroundColor: colors.secondaryText,
+  height: 1,
+  opacity: 0.5,
+  marginBottom: 4,
+},
+primaryText: {
+  fontSize: 16,
+  color: colors.primaryText,
+},
+secondaryText: {
+  fontSize: 12,
+  color: colors.secondaryText,
+},
+positiveText: {
+  fontSize: 16,
+  color: colors.positiveText,
+},
+negativeText: {
+  fontSize: 16,
+  color: colors.negativesText,
+},
+```
+
+---
+
+## 🔣 Passo 2: O ícone dinâmico (`CategoryItem`)
+
+Cada transação exibe um ícone circular à esquerda. A cor de fundo e o glifo vêm de `constants/categories.js`. Como transações antigas no AsyncStorage podem trazer uma `category` que não existe mais nas chaves do objeto `categories`, o componente usa **fallback** (`?? categories.food`) para não acessar propriedades de `undefined` e evitar crash.
+
 Crie o arquivo `components/CategoryItem.jsx`:
+
 ```jsx
-import { View, StyleSheet } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import { StyleSheet, View } from "react-native";
 import { categories } from "../constants/categories";
 import { colors } from "../constants/colors";
 
+/**
+ * Exibe o ícone da categoria em um círculo com a cor de fundo correspondente.
+ *
+ * @param {Object} props - Propriedades do componente.
+ * @param {string} props.category - Chave da categoria em `categories` (ex.: "food", "income").
+ *   Se o valor não existir em `categories` (dados legados ou inválidos), usa "food" como padrão
+ *   para evitar crash ao acessar propriedades de `undefined`.
+ * @returns {JSX.Element} View com ícone Material centrado.
+ */
 export default function CategoryItem({ category }) {
-  // Acessa as configurações da categoria (ex: categories["food"])
-  const currentCategory = categories[category];
+  const categoryConfig = categories[category] ?? categories.food;
 
   return (
-    <View style={[styles.background, { backgroundColor: currentCategory.background }]}>
-      <MaterialIcons name={currentCategory.icon} size={24} color={colors.primaryContrast} />
+    <View
+      style={[styles.background, { backgroundColor: categoryConfig.background }]}
+    >
+      <MaterialIcons
+        name={categoryConfig.icon}
+        size={24}
+        color={colors.primaryContrast}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   background: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
+    display: "flex",
     alignItems: "center",
-  }
+    justifyContent: "center",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
 });
 ```
-## 💳 Passo 3: O Item da Transação (`TransactionItem`)
-Agora vamos montar a "linha" completa da transação, exibindo o ícone, a descrição, a data e o valor formatado. Note a lógica condicional (`valueStyle`) que decide se o texto do dinheiro será verde (renda) ou vermelho (gasto).
+
+---
+
+## 💳 Passo 3: O item da transação (`TransactionItem`)
+
+Monte a linha completa: ícone, data, descrição e valor. A cor do valor (`valueStyle`) depende de a categoria ser renda (`categories.income.name`) ou não.
 
 Crie o arquivo `components/TransactionItem.jsx`:
 
@@ -81,9 +108,14 @@ import { globalStyles } from "../styles/globalStyles";
 import CategoryItem from "./CategoryItem";
 import { categories } from "../constants/categories";
 
-export default function TransactionItem({ category, date, description, value }) {
-  // Define a cor do texto do valor com base na categoria
-  const valueStyle = category === categories.income.name
+export default function TransactionItem({
+  category,
+  date,
+  description,
+  value,
+}) {
+  const valueStyle =
+    category === categories.income.name
       ? globalStyles.positiveText
       : globalStyles.negativeText;
 
@@ -91,17 +123,12 @@ export default function TransactionItem({ category, date, description, value }) 
     <>
       <View style={styles.itemContainer}>
         <CategoryItem category={category} />
-        
         <View style={styles.textContainer}>
-          {/* Data formatada para pt-BR */}
           <Text style={globalStyles.secondaryText}>
             {new Date(date).toLocaleDateString("pt-BR")}
           </Text>
-          
           <View style={styles.bottomLineContainer}>
             <Text style={globalStyles.primaryText}>{description}</Text>
-            
-            {/* Valor formatado como Moeda */}
             <Text style={valueStyle}>
               {value.toLocaleString("pt-BR", {
                 style: "currency",
@@ -111,7 +138,6 @@ export default function TransactionItem({ category, date, description, value }) 
           </View>
         </View>
       </View>
-      {/* Linha divisória entre os itens */}
       <View style={globalStyles.line} />
     </>
   );
@@ -138,13 +164,17 @@ const styles = StyleSheet.create({
   },
 });
 ```
-## 📋 Passo 4: A Tela Principal com FlatList
-Finalmente, vamos até a nossa tela inicial (`app/(tabs)/index.jsx`) buscar os dados do nosso `MoneyContext` e passá-los para a `FlatList`.
 
-**Por que a FlatList é incrível?** Ela possui a propriedade `ListEmptyComponent`, que permite exibir um texto amigável (ex: "Ainda não há nenhum item!") caso o usuário tenha acabado de instalar o aplicativo e a lista esteja vazia.
+---
+
+## 📋 Passo 4: A tela principal com `FlatList`
+
+Em `app/(tabs)/index.jsx`, leia `transactions` do `MoneyContext` e passe cada item para `TransactionItem`. O projeto usa o alias `@` (veja `babel.config.js` / `tsconfig`): o import do contexto fica `@/contexts/GlobalState`.
+
+**Por que a `FlatList` ajuda?** Entre outras coisas, `ListEmptyComponent` exibe uma mensagem quando ainda não há transações (por exemplo, logo após instalar o app).
 
 ```jsx
-import { MoneyContext } from "../../contexts/GlobalState";
+import { MoneyContext } from "@/contexts/GlobalState";
 import { useContext } from "react";
 import { FlatList, Text, View } from "react-native";
 import TransactionItem from "../../components/TransactionItem";
@@ -157,11 +187,7 @@ export default function Transactions() {
     <View style={globalStyles.screenContainer}>
       <FlatList
         data={transactions}
-        // Desestrutura o item atual e passa todas as suas propriedades para o TransactionItem
         renderItem={({ item }) => <TransactionItem {...item} />}
-        keyExtractor={(item, index) => index.toString()} // Importante para evitar avisos no console
-        
-        // Componente exibido quando o array de dados está vazio
         ListEmptyComponent={
           <Text style={globalStyles.secondaryText}>
             Ainda não há nenhum item!
@@ -173,11 +199,21 @@ export default function Transactions() {
   );
 }
 ```
-💡 **Dica de Debug (Limpando o AsyncStorage)**
-Se você adicionou dados incorretos no passado (por exemplo, quando a data estava salva como texto simples em vez de objeto) e o aplicativo estiver fechando sozinho (`Crash`) ao tentar carregar a lista, você precisará limpar a memória do celular.
-Basta ir no seu `GlobalState.jsx` e colocar um `AsyncStorage.clear()` temporariamente dentro do seu `useEffect`, rodar o app uma vez e depois retirar o comando.
 
-✅ **O que alcançamos hoje?**
-Sua aba principal agora parece um aplicativo de banco profissional! As listas são renderizadas eficientemente, com formatação de moeda perfeita, formatação de datas nativa e cores condicionais para orientar visualmente o usuário sobre ganhos e despesas.
+Se o React Native avisar sobre falta de `key` estável, você pode acrescentar `keyExtractor={(item) => String(item.id)}` (desde que cada transação tenha `id` único, como em `add-transactions`).
 
-**Próximo Passo:** Na próxima (e última) grande aula, vamos fechar com chave de ouro criando a **Aba de Resumo**, agrupando esses dados matematicamente para gerar estatísticas!
+---
+
+## 💡 Dica de debug (AsyncStorage)
+
+Se dados antigos estiverem inconsistentes (formato de data estranho, campos faltando) e a lista quebrar ao carregar, limpe o storage temporariamente: em `contexts/GlobalState.jsx`, dentro do `useEffect` que lê o AsyncStorage, chame `AsyncStorage.clear()` uma vez, execute o app, depois remova essa linha.
+
+Com o `CategoryItem` atual, categorias desconhecidas deixam de derrubar o app (caem no fallback), mas outros problemas de payload ainda podem exigir limpar ou corrigir os dados salvos.
+
+---
+
+## ✅ O que alcançamos
+
+A aba principal lista transações com boa performance, moeda e data em `pt-BR`, cores condicionais para renda e despesa, estado vazio amigável e ícones por categoria resilientes a dados legados.
+
+**Próximo passo:** na última grande aula, a **aba de resumo**, agrupando valores para estatísticas.
