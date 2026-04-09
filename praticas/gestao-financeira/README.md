@@ -40,6 +40,44 @@ npx expo install @react-native-community/datetimepicker
 ## 🗂️ Passo 3: Dropdown de Categorias (Picker)
 Para a Categoria, não queremos que o usuário digite, queremos que ele escolha de uma lista fixa.
 
+Crie um arquivo chamado `categories.js` dentro da pasta `constants`
+```js
+import { colors } from "./colors"
+
+export const categories = {
+  income: {
+    icon: "work",
+    background: colors.categoryIncome,
+    name: "income",
+    displayName: "Renda"
+  },
+  food: {
+    icon: "fastfood",
+    background: colors.categoryFood,
+    name: "food",
+    displayName: "Alimentação"
+  },
+  house: {
+    icon: "home",
+    background: colors.categoryHouse,
+    name: "house",
+    displayName: "Casa"
+  },
+  education: {
+    icon: "book",
+    background: colors.categoryEducation,
+    name: "education",
+    displayName: "Educação"
+  },
+  travel: {
+    icon: "airplanemode-active",
+    background: colors.categoryTravel,
+    name: "travel",
+    displayName: "Viagens"
+  }
+}
+```
+
 1. **Instalação:** Rode no terminal:
 ```bash
 npx expo install @react-native-picker/picker
@@ -48,7 +86,7 @@ npx expo install @react-native-picker/picker
 3. **Estilização:** O Picker nativo deve ser envolvido em uma `<View>` com bordas para ficar parecido com os outros inputs.
 
 ## 🧩 Passo 4: Juntando Tudo (Código Final da Tela)
-Aqui está o código completo do nosso arquivo `AddTransactions.jsx` com todas as funcionalidades integradas:
+Aqui está o código completo do nosso arquivo `add-transactions.jsx` com todas as funcionalidades integradas:
 ```js
 import {
   Text,
