@@ -19,22 +19,34 @@ Como nossas três telas precisam ver a mesma lista de transações, precisamos d
 Crie uma pasta chamada `contexts` na raiz do projeto e adicione o arquivo `GlobalState.jsx`. Nele, vamos criar nosso contexto e também já deixar preparado o código que vai buscar as informações salvas no celular ao abrir o app:
 
 ```javascript
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createContext, useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import { createContext, useEffect, useState } from "react"
 
-// 1. Criando o contexto
-export const MoneyContext = createContext();
+export const MoneyContext = createContext()
 
 export default function GlobalState({ children }) {
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState([])
 
-  // Busca os dados no celular assim que o componente é montado
   useEffect(() => {
     const getAsyncStorage = async () => {
       try {
-        const storedTransactions = await AsyncStorage.getItem("transactions");
+        const storedTransactions = await AsyncStorage.getItem("transactions")
         if (storedTransactions) {
-          // AsyncStorage só guarda Textos (Strings).
+          setTransactions(JSON.parse(storedTransactions))
+        }
+      } catch (e) {
+        console.log(e)
+      }
+    }
+    getAsyncStorage()
+  }, [])
+
+  return (
+    <MoneyContext.Provider value={[transactions, setTransactions]}>
+      {children}
+    </MoneyContext.Provider>
+  )
+}
 ```
 ### ☂️ Passo 2: Envolvendo a Aplicação com o Contexto
 Para que o `MoneyContext` funcione, ele precisa abraçar toda a nossa árvore de navegação. Abra o arquivo `app/_layout.jsx` (ou `RootLayout`) e envolva o `<Stack>` com o seu novo `GlobalState`:

@@ -26,9 +26,10 @@ const initialForm = {
 
 export default function AddTransactions() {
   const [form, setForm] = useState(initialForm);
-  const [transactions, setTransactions] = useContext(MoneyContext);
   const valueInputRef = useRef();
-
+  
+  const [transactions, setTransactions] = useContext(MoneyContext); 
+  
   const setAsyncStorage = async (data) => {
     try {
       await AsyncStorage.setItem("transactions", JSON.stringify(data));
