@@ -1,128 +1,92 @@
-import {
- View,
- TextInput,
- Button,
- Alert
-} from "react-native";
-
-
-import {
- useState
-} from "react";
-
-
+import { View, TextInput, Button, Alert, StyleSheet, Text } from "react-native";
+import { useState } from "react";
 import api from "../services/api";
+import { router } from "expo-router";
 
+export default function Categories() {
+  const [name, setName] = useState("");
+  const [icon, setIcon] = useState("");
+  const [color, setColor] = useState("#6c757d");
 
-export default function Categories(){
+  async function create() {
+    if (!name.trim()) {
+      Alert.alert("Erro", "Digite o nome da categoria.");
+      return;
+    }
 
+    const slug = name.trim().toLowerCase().replace(/\s+/g, "-");
 
-const [name,setName]=useState("");
-const [icon,setIcon]=useState("");
-const [color,setColor]=useState("");
-const [type,setType]=useState<
-"RECEITA"|"DESPESA"
->("DESPESA");
+    try {
+      await api.post("/categories", {
+        name: slug,
+        displayName: name.trim(),
+        icon: icon.trim() || "category",
+        color,
+      });
 
+      Alert.alert("Sucesso", "Categoria criada!");
+      setName("");
+      setIcon("");
+      setColor("#6c757d");
+    } catch (e: unknown) {
+      const msg =
+        e instanceof Error ? e.message : "Erro ao criar categoria.";
+      Alert.alert("Erro", msg);
+    }
+  }
 
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Nova Categoria</Text>
 
-async function create(){
+      <TextInput
+        placeholder="Nome (ex: Viagens)"
+        value={name}
+        onChangeText={setName}
+        style={styles.input}
+      />
 
+      <TextInput
+        placeholder="Ícone (ex: airplanemode-active)"
+        value={icon}
+        onChangeText={setIcon}
+        style={styles.input}
+      />
 
-try{
+      <TextInput
+        placeholder="Cor hex (ex: #FF6384)"
+        value={color}
+        onChangeText={setColor}
+        style={styles.input}
+      />
 
+      <Button title="Criar categoria" onPress={create} color="#37BF81" />
 
-await api.post(
-"/categories",
-{
+      <Button
+        title="Voltar"
+        onPress={() => router.back()}
+        color="#999"
+      />
+    </View>
+  );
+}
 
- name,
-
- display:name,
-
- icon,
-
- color,
-
- type
-
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    gap: 12,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+  },
 });
-
-
-Alert.alert(
-"Categoria criada"
-);
-
-
-setName("");
-
-
-}catch(e){
-
-Alert.alert(
-"Erro ao criar"
-);
-
-}
-
-}
-
-
-
-
-return (
-
-<View
-style={{
-padding:20
-}}
->
-
-
-<TextInput
-placeholder="Nome"
-value={name}
-onChangeText={setName}
-/>
-
-
-
-<TextInput
-placeholder="Ícone"
-value={icon}
-onChangeText={setIcon}
-/>
-
-
-
-<TextInput
-placeholder="Cor"
-value={color}
-onChangeText={setColor}
-/>
-
-
-
-<TextInput
-placeholder="RECEITA ou DESPESA"
-value={type}
-onChangeText={
-v=>setType(
-v as any
-)
-}
-/>
-
-
-
-<Button
-title="Criar categoria"
-onPress={create}
-/>
-
-
-</View>
-
-)
-
-}
