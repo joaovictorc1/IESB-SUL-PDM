@@ -1,24 +1,45 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { Stack, router } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { AuthProvider, useAuth } from "../contexts/AuthContext";
+import { useEffect } from "react";
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+function RouterGuard() {
+  const { userName, loading } = useAuth();
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  useEffect(() => {
+
+    if (loading) return;
+
+
+    if (!userName) {
+      router.replace("/login");
+    } else {
+      router.replace("/(tabs)");
+    }
+
+  }, [loading, userName]);
+
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <Stack
+      screenOptions={{
+        headerShown:false
+      }}
+    />
+  );
+}
+
+
+export default function RootLayout() {
+
+  return (
+    <AuthProvider>
+
+      <StatusBar style="light" />
+
+      <RouterGuard />
+
+    </AuthProvider>
   );
 }
